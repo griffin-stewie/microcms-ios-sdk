@@ -307,3 +307,165 @@ public enum HTTPMethod: String {
     case PATCH
     case DELETE
 }
+
+// MARK: - async/await support
+
+@available(watchOS 8.0, *)
+@available(tvOS 15.0, *)
+@available(iOS 15.0, *)
+@available(macOS 12.0, *)
+extension MicrocmsClient {
+
+    public enum ClientError: Error {
+        case failedToMakeRequest
+    }
+
+    private func request(method: HTTPMethod,
+                         endpoint: String,
+                         contentId: String?,
+                         params: [String: Any]?,
+                         isDraft: Bool?) async throws -> Any {
+        let request = makeWriteRequest(method: method,
+                                       endpoint: endpoint,
+                                       contentId: contentId,
+                                       params: params,
+                                       isDraft: isDraft)
+
+        guard let request = request else {
+            print("[ERROR] failed to make request")
+            throw ClientError.failedToMakeRequest
+        }
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+
+        if method == .DELETE {
+            return "success"
+        } else {
+            let object = try JSONSerialization.jsonObject(with: data, options: [])
+            return object
+        }
+    }
+
+    /// fetch microCMS contents.
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId. It's needed if you want to fetch a element of list.
+    ///   - params: some parameters for filtering or sorting results.
+    /// - Returns: Any
+    @discardableResult
+    public func get(
+        endpoint: String,
+        contentId: String? = nil,
+        params: [MicrocmsParameter]? = nil) async throws -> Any {
+
+            guard let request = makeRequest(
+                endpoint: endpoint,
+                contentId: contentId,
+                params: params) else { throw ClientError.failedToMakeRequest }
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+            return try JSONSerialization.jsonObject(with: data, options: [])
+        }
+
+    /// fetch microCMS contents.
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId. It's needed if you want to fetch a element of list.
+    ///   - params: some parameters for filtering or sorting results.
+    ///   - completion: handler of api result, `T` or `Error`. T is decodable class.
+    /// - Returns: `T` or `Error`. T is decodable class.
+    @discardableResult
+    public func get<T: Decodable>(
+        endpoint: String,
+        contentId: String? = nil,
+        params: [MicrocmsParameter]? = nil) async throws -> T {
+
+            guard let request = makeRequest(
+                endpoint: endpoint,
+                contentId: contentId,
+                params: params) else { throw ClientError.failedToMakeRequest }
+
+            let (data, _) = try await URLSession.shared.data(for: request)
+            return try JSONDecoder().decode(T.self, from: data)
+        }
+
+
+    /// post content for microCMS .
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - params: some parameters for body.
+    ///   - isDraft: if true, create or update content as draft.
+    /// - Returns: response
+    @discardableResult
+    public func create(
+        endpoint: String,
+        params: [String: Any]?,
+        isDraft: Bool = false) async throws -> Any {
+            try await request(method: .POST,
+                              endpoint: endpoint,
+                              contentId: nil,
+                              params: params,
+                              isDraft: isDraft)
+        }
+
+    /// create content with specified ID.
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId. you can specify contentId for new content.
+    ///   - params: some parameters for body.
+    ///   - isDraft: if true, create or update content as draft.
+    /// - Returns: URLSessionTask you requested. Basically, you don't need to use it, but it helps you to manage state or cancel request.
+    @discardableResult
+    public func create(
+        endpoint: String,
+        contentId: String,
+        params: [String: Any]?,
+        isDraft: Bool = false) async throws -> Any {
+            try await request(method: .PUT,
+                              endpoint: endpoint,
+                              contentId: contentId,
+                              params: params,
+                              isDraft: isDraft)
+        }
+
+    /// update content for microCMS .
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId of target.
+    ///   - params: some parameters for body.
+    /// - Returns: URLSessionTask you requested. Basically, you don't need to use it, but it helps you to manage state or cancel request.
+    @discardableResult
+    public func update(
+        endpoint: String,
+        contentId: String? = nil,
+        params: [String: Any]?) async throws -> Any {
+            try await request(method: .PATCH,
+                              endpoint: endpoint,
+                              contentId: contentId,
+                              params: params,
+                              isDraft: nil)
+        }
+
+    /// delete content for microCMS .
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId of target.
+    /// - Returns: URLSessionTask you requested. Basically, you don't need to use it, but it helps you to manage state or cancel request.
+    @discardableResult
+    public func delete(
+        endpoint: String,
+        contentId: String) async throws -> Any {
+            try await request(method: .DELETE,
+                              endpoint: endpoint,
+                              contentId: contentId,
+                              params: nil,
+                              isDraft: nil)
+        }
+}
+
