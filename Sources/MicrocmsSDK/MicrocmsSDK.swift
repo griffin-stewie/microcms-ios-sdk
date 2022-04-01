@@ -336,10 +336,13 @@ extension MicrocmsClient {
             throw ClientError.failedToMakeRequest
         }
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        print("response: \(response)")
+        print("data: \(String(data: data, encoding: .utf8) ?? "could not decode as UTF-8 String")")
 
         if method == .DELETE {
-            return "success"
+            return String(data: data, encoding: .utf8) ?? "could not decode as UTF-8 String"
         } else {
             let object = try JSONSerialization.jsonObject(with: data, options: [])
             return object
