@@ -383,7 +383,8 @@ extension MicrocmsClient {
     public func get<T: Decodable>(
         endpoint: String,
         contentId: String? = nil,
-        params: [MicrocmsParameter]? = nil) async throws -> T {
+        params: [MicrocmsParameter]? = nil,
+        jsonDecoder: JSONDecoder = .init()) async throws -> T {
 
             guard let request = makeRequest(
                 endpoint: endpoint,
@@ -391,7 +392,7 @@ extension MicrocmsClient {
                 params: params) else { throw ClientError.failedToMakeRequest }
 
             let (data, _) = try await URLSession.shared.data(for: request)
-            return try JSONDecoder().decode(T.self, from: data)
+            return try jsonDecoder.decode(T.self, from: data)
         }
 
 
