@@ -360,6 +360,27 @@ extension MicrocmsClient {
     public func get(
         endpoint: String,
         contentId: String? = nil,
+        params: [MicrocmsParameter]? = nil) async throws -> (Data, URLResponse) {
+
+            guard let request = makeRequest(
+                endpoint: endpoint,
+                contentId: contentId,
+                params: params) else { throw ClientError.failedToMakeRequest }
+
+            return try await URLSession.shared.data(for: request)
+        }
+
+    /// fetch microCMS contents.
+    ///
+    /// - Parameters:
+    ///   - endpoint: endpoint of contents.
+    ///   - contentId: contentId. It's needed if you want to fetch a element of list.
+    ///   - params: some parameters for filtering or sorting results.
+    /// - Returns: Any
+    @discardableResult
+    public func get(
+        endpoint: String,
+        contentId: String? = nil,
         params: [MicrocmsParameter]? = nil) async throws -> Any {
 
             guard let request = makeRequest(
